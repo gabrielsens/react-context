@@ -1,17 +1,21 @@
-import { Button, Snackbar, InputLabel } from '@material-ui/core';
+import { Button, Snackbar, InputLabel, Select, MenuItem } from '@material-ui/core';
 import MuiAlert from '@material-ui/lab/Alert';
 import { useCarrinhoContext } from 'common/context/Carrinho';
-import { PagamentoContext } from 'common/context/Pagamento';
+import { usePagamento } from 'common/context/Pagamento';
+import { UsuarioContext } from 'common/context/Usuario';
 import Produto from 'components/Produto';
-import { useContext, useState } from 'react';
+import { useContext, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { Container, Voltar, TotalContainer, PagamentoContainer} from './styles';
 
 function Carrinho() {
   const history = useHistory();
   const [openSnackbar, setOpenSnackbar] = useState(false);
-  const { carrinho } = useCarrinhoContext();
-  const { formaPagamento, setFormaPagamento, tiposPagamento } = useContext(PagamentoContext);
+  const { carrinho, valorTotal, handleEfetuarCompra } = useCarrinhoContext();
+  const { formaPagamento, handleFormaPagamento, tiposPagamento } = usePagamento();
+  const { saldo = 0 } = useContext(UsuarioContext);
+  const saldoTotal = useMemo(() => saldo - valorTotal, [saldo, valorTotal]);
+
   return (
     <Container>
       <Voltar onClick={() => history.goBack()} />
@@ -22,26 +26,40 @@ function Carrinho() {
         <Produto {...produto} key={produto.id} />
       ))}
       <PagamentoContainer>
-        <InputLabel> Forma de Pagamento: {formaPagamento.nome}</InputLabel>
+        <InputLabel> Forma de Pagamento:</InputLabel>
+        <Select
+          value={formaPagamento.id}
+          onChange={(event) => handleFormaPagamento(event.target.value)}
+        >
+          {tiposPagamento.map((pagamento) => {
+            return (
+              <MenuItem value={pagamento.id} key={pagamento.id}>
+                {pagamento.nome}
+              </MenuItem>
+            )
+          })}
+        </Select>
       </PagamentoContainer>
       <TotalContainer>
           <div>
             <h2>Total no Carrinho: </h2>
-            <span>R$ </span>
+            <span>R$ {valorTotal.toFixed(2)}</span>
           </div>
           <div>
             <h2> Saldo: </h2>
-            <span> R$ </span>
+            <span> R$ {saldo.toFixed(2)}</span>
           </div>
           <div>
             <h2> Saldo Total: </h2>
-            <span> R$ </span>
+            <span> R$ {saldoTotal.toFixed(2)}</span>
           </div>
         </TotalContainer>
       <Button
         onClick={() => {
+          handleEfetuarCompra();
           setOpenSnackbar(true);
         }}
+        disabled={saldoTotal < 0 || carrinho.length === 0}
         color="primary"
         variant="contained"
       >

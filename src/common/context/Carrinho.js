@@ -1,3 +1,6 @@
+import { usePagamento } from "./Pagamento";
+import { UsuarioContext } from "./Usuario";
+
 const { createContext, useState, useContext, useEffect } = require("react");
 
 const CarrinhoContext = createContext();
@@ -6,9 +9,10 @@ CarrinhoContext.displayName = "Carrinho";
 export const CarrinhoProvider = ({ children }) => {
   const [carrinho, setCarrinho] = useState([]);
   const [qntProdutos, setQntProdutos] = useState(0);
+  const [valorTotal, setValorTotal] = useState(0);
 
   return (
-    <CarrinhoContext.Provider value={{ carrinho, setCarrinho, qntProdutos, setQntProdutos }}>
+    <CarrinhoContext.Provider value={{ carrinho, setCarrinho, qntProdutos, setQntProdutos, valorTotal, setValorTotal }}>
       {children}
     </CarrinhoContext.Provider>
   )
@@ -16,8 +20,11 @@ export const CarrinhoProvider = ({ children }) => {
 
 
 export const useCarrinhoContext = () => {
-  const { carrinho, setCarrinho, qntProdutos, setQntProdutos  } = useContext(CarrinhoContext);
-
+  const {
+    carrinho, setCarrinho, qntProdutos, setQntProdutos, valorTotal, setValorTotal
+  } = useContext(CarrinhoContext);
+  const { formaPagamento }= usePagamento();
+  const { setSaldo } = useContext(UsuarioContext);
 
   function handleAddQuantityProduct(pProduct) {
     const haveProduct = carrinho.some(product => product.id === pProduct.id);
@@ -43,15 +50,31 @@ export const useCarrinhoContext = () => {
 
   }
 
+  function handleEfetuarCompra() {
+    setCarrinho([]);
+    setSaldo(prevState => prevState - valorTotal);
+
+  }
+
   useEffect(() => {
-    setQntProdutos(carrinho.reduce(
+    const { quantidade, valor } = carrinho.reduce(
       (previusValue, currentValue) => {
-        return previusValue + currentValue.quantidade
-      }, 0))
-  }, [carrinho, setQntProdutos])
+        return {
+        quantidade: previusValue.quantidade + currentValue.quantidade,
+        valor: previusValue.valor + (currentValue.valor * currentValue.quantidade),
+      }}, {
+        quantidade: 0,
+        valor: 0
+      });
+
+      setQntProdutos(quantidade);
+      setValorTotal(valor * formaPagamento.juros);
+
+  }, [carrinho, setQntProdutos, setValorTotal, formaPagamento])
 
   return {
-    carrinho, setCarrinho, handleAddQuantityProduct, handleRemoveQuantityProduct, qntProdutos
+    carrinho, setCarrinho, handleAddQuantityProduct, handleRemoveQuantityProduct,
+    qntProdutos, valorTotal, handleEfetuarCompra
   }
 
 }
